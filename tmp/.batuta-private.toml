@@ -1,0 +1,5 @@
+[private]
+python_corpus_dirs = [
+    "/home/alfredo/code/databricks-governance/tmp/databrics-sdk-py",
+]
+

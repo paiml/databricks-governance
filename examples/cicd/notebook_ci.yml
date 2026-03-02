@@ -1,0 +1,144 @@
+# =============================================================================
+# Lesson 2.3: CI/CD for Notebooks
+# GitHub Actions Workflow — Test and Promote Notebooks Across Environments
+# =============================================================================
+# This workflow demonstrates a three-stage promotion pipeline:
+#   1. On PR creation → run the notebook in the staging workspace
+#   2. On merge to main → run the notebook in the production workspace
+#
+# Required secrets:
+#   DATABRICKS_STAGING_HOST   — staging workspace URL
+#   DATABRICKS_STAGING_TOKEN  — staging workspace token
+#   DATABRICKS_PROD_HOST      — production workspace URL
+#   DATABRICKS_PROD_TOKEN     — production workspace token
+#   STAGING_CLUSTER_ID        — cluster ID in the staging workspace
+#   PROD_CLUSTER_ID           — cluster ID in the production workspace
+# =============================================================================
+
+name: Notebook CI/CD
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  # ── Stage 1: Run notebook in staging on every PR ─────────────────────────────
+  test-in-staging:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Databricks CLI
+        run: pip install databricks-cli
+
+      - name: Configure Databricks CLI for staging
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_STAGING_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_STAGING_TOKEN }}
+        run: |
+          databricks configure --token <<EOF
+          $DATABRICKS_HOST
+          $DATABRICKS_TOKEN
+          EOF
+
+      - name: Import notebook to staging workspace
+        run: |
+          databricks workspace import \
+            --language PYTHON \
+            --overwrite \
+            notebooks/validate_pipeline.py \
+            /Shared/ci/validate_pipeline
+
+      - name: Run notebook in staging
+        env:
+          CLUSTER_ID: ${{ secrets.STAGING_CLUSTER_ID }}
+        run: |
+          RUN_ID=$(databricks runs submit --json '{
+            "run_name": "CI - validate_pipeline (PR #${{ github.event.pull_request.number }})",
+            "existing_cluster_id": "'"$CLUSTER_ID"'",
+            "notebook_task": {
+              "notebook_path": "/Shared/ci/validate_pipeline",
+              "base_parameters": {
+                "env": "staging",
+                "catalog": "staging_catalog"
+              }
+            }
+          }' | jq -r '.run_id')
+
+          echo "RUN_ID=$RUN_ID" >> "$GITHUB_ENV"
+          echo "Submitted run: $RUN_ID"
+
+      - name: Wait for notebook run to complete
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_STAGING_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_STAGING_TOKEN }}
+        run: |
+          while true; do
+            STATE=$(databricks runs get --run-id "$RUN_ID" | jq -r '.state.life_cycle_state')
+            echo "Current state: $STATE"
+            if [[ "$STATE" == "TERMINATED" ]]; then
+              RESULT=$(databricks runs get --run-id "$RUN_ID" | jq -r '.state.result_state')
+              echo "Result: $RESULT"
+              if [[ "$RESULT" != "SUCCESS" ]]; then exit 1; fi
+              break
+            fi
+            sleep 15
+          done
+
+  # ── Stage 2: Deploy to production on merge to main ──────────────────────────
+  deploy-to-production:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Databricks CLI
+        run: pip install databricks-cli
+
+      - name: Configure Databricks CLI for production
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_PROD_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_PROD_TOKEN }}
+        run: |
+          databricks configure --token <<EOF
+          $DATABRICKS_HOST
+          $DATABRICKS_TOKEN
+          EOF
+
+      - name: Import notebook to production workspace
+        run: |
+          databricks workspace import \
+            --language PYTHON \
+            --overwrite \
+            notebooks/validate_pipeline.py \
+            /Shared/prod/validate_pipeline
+
+      - name: Update production Repo to latest main
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_PROD_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_PROD_TOKEN }}
+          REPO_ID: ${{ secrets.PROD_REPO_ID }}
+        run: |
+          curl -s -X PATCH \
+            "$DATABRICKS_HOST/api/2.0/repos/$REPO_ID" \
+            -H "Authorization: Bearer $DATABRICKS_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{"branch": "main"}' \
+            | jq .

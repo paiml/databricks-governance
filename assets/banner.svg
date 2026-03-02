@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200" width="800" height="200">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#16213e;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#e05c00;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#ff8c42;stop-opacity:1"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="800" height="200" fill="url(#bg)" rx="12"/>
+
+  <!-- Accent bar -->
+  <rect x="0" y="0" width="6" height="200" fill="url(#accent)" rx="3"/>
+
+  <!-- Databricks-style diamond icon -->
+  <polygon points="60,100 80,75 100,100 80,125" fill="#e05c00" opacity="0.9"/>
+  <polygon points="80,75 100,100 120,75 100,50" fill="#ff8c42" opacity="0.7"/>
+  <polygon points="80,125 100,100 120,125 100,150" fill="#c44a00" opacity="0.7"/>
+
+  <!-- Course title -->
+  <text x="140" y="85" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="700" fill="#ffffff">
+    Production Governance
+  </text>
+  <text x="140" y="118" font-family="'Segoe UI', Arial, sans-serif" font-size="26" font-weight="700" fill="#ff8c42">
+    &amp; MLOps with Databricks
+  </text>
+
+  <!-- Subtitle tags -->
+  <text x="140" y="152" font-family="'Segoe UI', Arial, sans-serif" font-size="13" fill="#8892b0">
+    Unity Catalog  ·  Access Control  ·  Lineage  ·  CI/CD  ·  MLflow  ·  Monitoring  ·  Secrets
+  </text>
+
+  <!-- Brand -->
+  <text x="762" y="185" font-family="'Segoe UI', Arial, sans-serif" font-size="11" fill="#4a5568" text-anchor="end">
+    Pragmatic AI Labs
+  </text>
+</svg>

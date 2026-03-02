@@ -1,0 +1,60 @@
+# =============================================================================
+# Lesson 2.1: Databricks Repos
+# GitHub Actions Workflow — Sync a Git Branch to a Databricks Repo
+# =============================================================================
+# This workflow triggers on pushes to the main branch and uses the Databricks
+# Repos API to update the corresponding repo in a Databricks workspace.
+# Required secrets:
+#   DATABRICKS_HOST  — workspace URL, e.g. https://adb-1234567890.azuredatabricks.net
+#   DATABRICKS_TOKEN — personal access token or service principal OAuth token
+#   REPO_ID          — numeric ID of the Databricks repo (found via API or UI)
+# =============================================================================
+
+name: Sync to Databricks Repo
+
+on:
+  push:
+    branches:
+      - main
+      - staging
+
+jobs:
+  sync-repo:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Determine target branch
+        id: branch
+        run: |
+          if [[ "${{ github.ref_name }}" == "main" ]]; then
+            echo "db_branch=main" >> "$GITHUB_OUTPUT"
+          else
+            echo "db_branch=staging" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Update Databricks Repo to latest branch
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+          REPO_ID: ${{ secrets.REPO_ID }}
+        run: |
+          curl -s -X PATCH \
+            "$DATABRICKS_HOST/api/2.0/repos/$REPO_ID" \
+            -H "Authorization: Bearer $DATABRICKS_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{\"branch\": \"${{ steps.branch.outputs.db_branch }}\"}" \
+            | jq .
+
+      - name: Verify repo update
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+          REPO_ID: ${{ secrets.REPO_ID }}
+        run: |
+          curl -s \
+            "$DATABRICKS_HOST/api/2.0/repos/$REPO_ID" \
+            -H "Authorization: Bearer $DATABRICKS_TOKEN" \
+            | jq '{id, path, branch, head_commit_id}'
