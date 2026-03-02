@@ -2,7 +2,7 @@
 
 ## Overview
 
-In this capstone project, you will design and implement a production-ready governance layer for a data platform of your choice. Drawing on all three weeks of the course, you will combine Unity Catalog access control, CI/CD pipelines, MLflow model management, Lakehouse Monitoring, and secrets management into a cohesive system.
+In this capstone project you will design and implement a governance layer for a Databricks workspace. Drawing on all three weeks of the course, you will combine Unity Catalog access control, automated CI/CD pipelines, and Lakehouse Monitoring into a cohesive system.
 
 ## Project Requirements
 
@@ -13,80 +13,75 @@ In this capstone project, you will design and implement a production-ready gover
    - Define at least two Delta tables per layer with meaningful column comments
    - Create at least one Volume for unstructured file storage
 
-2. **Access Control**
-   - Define at least three groups representing distinct organizational roles (e.g., `analysts`, `data-engineers`, `ml-team`)
-   - Write a complete GRANT model that applies least privilege across all schemas
-   - Implement at least one column mask or row filter on a table containing simulated PII
+2. **Service Principal and Access Control**
+   - Create a service principal using the Databricks Python SDK
+   - Write `GRANT` and `REVOKE` statements at the catalog level using SQL
+   - Use `SHOW GRANTS` to verify the resulting permission state and include the output in your submission
 
-3. **Lineage Verification**
-   - Run at least two write operations (e.g., `INSERT INTO`) and one transformation (e.g., `CREATE TABLE AS SELECT`)
-   - Query `system.lineage.table_lineage` and document the captured lineage graph
-   - Query `system.access.audit` to verify that read access is being logged
+3. **CLI Verification**
+   - Use the Databricks CLI to list your catalogs and confirm the catalog you created appears in the output
+   - Use the CLI to list service principals and confirm the one you created is present
+   - Include the terminal output for both commands in your submission
 
-### Week 2 Requirements (CI/CD and MLflow)
+### Week 2 Requirements (Automation and CI/CD)
 
-4. **Databricks Repos Integration**
-   - Connect your project repository to a Databricks workspace via Repos
-   - Configure a GitHub Actions workflow (or equivalent) that updates the workspace Repo on push
+4. **GitHub Integration**
+   - Connect your project repository to a Databricks workspace via the Git folder (Repos) interface
+   - Create a feature branch, make at least one change, and open a pull request against `main`
+   - Describe your branching strategy in a short `BRANCHING.md` file
 
-5. **ML Model Lifecycle**
-   - Train a model on a dataset of your choice and log it to MLflow with `autolog()`
-   - Register the model in the Unity Catalog-backed Model Registry
-   - Write a validation script that checks at least one metric against a threshold
-   - Promote the validated model to a `champion` alias
+5. **Running Notebooks as Jobs**
+   - Create a Databricks job that runs a notebook sourced from your connected Git repository
+   - Configure the job to reference a specific branch in that repository
+   - Run the job manually and include a screenshot or description of the successful run output
 
-### Week 3 Requirements (Monitoring and Security)
+6. **GitHub Actions CI/CD**
+   - Write a GitHub Actions workflow that triggers on pull requests to `main`
+   - The workflow must include at least one code quality step (e.g., a linter, a syntax check, or a Docker build validation)
+   - Include the workflow YAML file in your submission
 
-6. **Lakehouse Monitoring**
-   - Attach a snapshot monitor to at least one silver-layer table
-   - Query the generated profile metrics table and document the null rates and cardinality for at least three columns
-   - Design (or implement) a SQL alert that would fire when a null rate exceeds 5%
+### Week 3 Requirements (Monitoring)
 
-7. **ML Model Monitoring**
-   - Attach an inference log monitor to your model's inference table (real or simulated)
-   - Query the drift metrics table after at least two refresh windows
-   - Document the drift threshold you would use to trigger retraining
-
-8. **Secrets Management**
-   - Create a Databricks-backed secret scope
-   - Store at least one credential (e.g., a JDBC connection string or API key)
-   - Retrieve the secret in a notebook using `dbutils.secrets.get()` and verify it is redacted in output
+7. **Lakehouse Monitoring**
+   - Enable monitoring on at least one table in your catalog using the Databricks UI
+   - After the initial scan completes, document the quality results for that table: include the last scan timestamp, row count, and the freshness/completeness status
+   - Describe in writing what threshold you would set to trigger an alert, and what action you would take if that threshold were breached
 
 ## Deliverables
 
 Submit a single compressed archive (`.zip` or `.tar.gz`) containing:
 
-1. **SQL scripts** — all `CREATE`, `GRANT`, and lineage verification queries
-2. **Python notebooks** — MLflow training, validation, and promotion scripts
-3. **GitHub Actions YAML** — CI/CD workflow file
-4. **Monitoring report** — Markdown document with:
-   - Screenshot or query result of the profile metrics table
-   - Screenshot or query result of the drift metrics table
-   - Description of the alerting strategy you designed
-5. **Architecture diagram** — A diagram (any tool) showing:
+1. **SQL scripts** — all `CREATE`, `GRANT`, `REVOKE`, and `SHOW GRANTS` queries
+2. **Python script** — service principal creation via the Databricks SDK
+3. **CLI output** — terminal screenshots or copied output from the `databricks catalogs list` and `databricks service-principals list` commands
+4. **GitHub Actions YAML** — CI/CD workflow file
+5. **BRANCHING.md** — description of your branching strategy
+6. **Monitoring report** — a Markdown document containing:
+   - The quality results for your monitored table (screenshot or query output)
+   - Your alerting threshold and response strategy
+7. **Architecture diagram** — a diagram (any tool) showing:
    - Catalog → schema → table hierarchy
-   - Access control groups and their privileges
-   - CI/CD flow from development to production
-   - Monitoring and alerting flow
+   - Service principal and its granted permissions
+   - CI/CD flow from feature branch to main
+   - Monitoring scope and the table(s) being tracked
 
 ## Evaluation Rubric
 
 | Criterion | Points |
 |-----------|--------|
-| Catalog and schema design correctness | 15 |
-| Access control model completeness and correctness | 20 |
-| Column mask or row filter implementation | 10 |
-| Lineage verification queries | 10 |
-| MLflow model training and registration | 15 |
-| Model validation and promotion logic | 10 |
-| Lakehouse Monitoring setup and query | 10 |
-| Secrets management implementation | 5 |
-| Architecture diagram clarity | 5 |
+| Catalog and schema design correctness | 20 |
+| Service principal creation via Python SDK | 15 |
+| GRANT / REVOKE / SHOW GRANTS implementation | 20 |
+| CLI verification output (catalogs and service principals) | 10 |
+| GitHub integration, branching strategy, and pull request | 10 |
+| Notebook job configuration and successful run | 15 |
+| GitHub Actions CI/CD workflow | 5 |
+| Lakehouse Monitoring setup and documentation | 5 |
 | **Total** | **100** |
 
 ## Tips
 
 - Use the examples in this repository as starting points — adapt them to your chosen dataset and business scenario
 - The example dataset in `data/` provides a simple starting point if you do not have your own data
-- For local development, MLflow can be run locally with `mlflow ui` before pushing to Databricks
 - Document every decision — "why" is more important than "what" for the access control and monitoring sections
+- The Databricks CLI help system (`databricks help`) is useful for discovering the exact syntax of any command
